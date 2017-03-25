@@ -1,0 +1,95 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+</head>
+
+<body bgcolor="gray">
+<center><canvas id="mycanvas" width="600" height="240"></canvas></center></br>
+<center><canvas id="canvasPomoc" width="550" height="180"></canvas><center>
+
+
+
+<script src="pomoc2.js"></script>
+
+<script src="zmienneGlobalne.js"></script>
+
+<script src="ladowanie05.js"></script>
+
+<script src="alfabet.js"></script>
+<script src="obramowanie.js"></script>
+<script src="statek.js"></script>
+<script src="trasyPlanszy.js"></script>
+
+<script src="sterowanie.js"></script>
+<script src="asteroid.js"></script>
+
+
+<script>	
+
+
+
+
+	
+	
+	
+		
+	
+	var tempNumerTemp = 0;
+	var tempNumerTemp2obramowanie = 0;
+	var tempNumerTemp2obramowanieKolor = 2;
+	var tempNumerTemp2obramowanieDodaj = 1;
+	
+	function animacja(czas){
+		
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		gl.drawArrays(gl.TRIANGLES, 0, iloscPunktowWbuforze);
+		
+
+
+		liczbaKlatekNaSekunde.oblicz(czas);
+		liczbaKlatekNaSekunde.pokazNajmniejKlatek(300);
+		pomoc();
+		
+		zerujTablicePunktowPlanszy(4000);
+		
+		//gl.uniform1fv(wartoscTablicaPolTempJavaScriptWskazniki[100+Math.round(tempNumerTemp/2)], [wartoscTablicaPolTempJavaScript[111]]);	//próby ładowania tablicy punktów z JS
+
+		
+		//gl.uniform1fv(gl.getUniformLocation(program, "tablicaPol[1]"), [1]);	//próby ładowania tablicy punktów z JS
+		
+		//alfabet.litera("y", 510+Math.round(tempNumerTemp*0.5), 1, wartosciGlobalne.liczbaKratekGryPoziom);
+		//alfabet.litera("z", 516+tempNumerTemp, 1, wartosciGlobalne.liczbaKratekGryPoziom);
+		
+		//alfabet.zdanie("kurde rebele", 303, 1, wartosciGlobalne.liczbaKratekGryPoziom);
+		//alfabet.zdanie("co ja robie", 1080+tempNumerTemp, 1, wartosciGlobalne.liczbaKratekGryPoziom);
+		//obramowanie(100, 40, tempNumerTemp2obramowanie, tempNumerTemp2obramowanieKolor);
+		
+		asteroid.rysuj(3000-tempNumerTemp, 7, 1, wartosciGlobalne.liczbaKratekGryPoziom);
+		asteroid.rysuj(2500-tempNumerTemp, 7, 1, wartosciGlobalne.liczbaKratekGryPoziom);
+		asteroid.rysuj(2000-tempNumerTemp, 7, 1, wartosciGlobalne.liczbaKratekGryPoziom);
+		
+		sterowanie.ruchStatkiem(wartosciGlobalne.liczbaKratekGryPoziom,1);
+		statek.rysuj(statek.pozycja,wartosciGlobalne.liczbaKratekGryPoziom);
+		
+		requestAnimationFrame(arguments.callee);
+		
+		tempNumerTemp+=1;
+		if (tempNumerTemp>4000) tempNumerTemp=-1555;
+		if (tempNumerTemp2obramowanie>19) tempNumerTemp2obramowanieDodaj = -1;
+		if (tempNumerTemp2obramowanie<1) tempNumerTemp2obramowanieDodaj = 1;
+		tempNumerTemp2obramowanie += tempNumerTemp2obramowanieDodaj;
+	
+	}
+	
+		
+		
+
+</script>
+
+
+<script src="start.js"></script>
+
+</body>
+
+</html>

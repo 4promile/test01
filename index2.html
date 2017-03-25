@@ -1,0 +1,389 @@
+<html>
+
+<head>
+</head>
+
+<body bgcolor="white">
+<canvas id="mycanvas" width="550" height="450"></canvas>
+<canvas id="canvasPomoc" width="550" height="100"></canvas>
+
+
+
+<script src="pomoc.js"></script>
+
+<script>
+	
+	
+	var vertexShaderText = 		//tablica znaków, która zawiera tak naprawdę kod pisany w języku glsl, który chyba będzie pobierał/przypisywał/obliczał? pozycje punktów (vertexów) 
+[
+
+"precision mediump float;",			//ustawienie precyzji obliczeń GPU (podobno low jest wystarczające dla ustawień kolorów, medium dla tekstur, a hai dla vertexów)
+
+"",
+
+"attribute vec2 vertPosition;",			//zdaje się, że jest to deklaracja zmiennej o nazwie vertPosition, która będzie zawierać współrzędne (dane) wierzchołka (co oznacza tzw kwalifikator pamięciowy attribute), tutaj będą to współrzędne dwuwymiarowe (czyli x i y), co oznacza vec2
+
+"attribute vec2 vertColor;",				//deklaracja zmiennej o nazwie vertColor, która zawierać będzie trzy liczby (vec3), dane kolorów RGB
+
+//"uniform float screenWidth;",			//deklaracja zmiennej o nazwie screenWidth, typ zmiennej float (czyli zmiennoprzecinkowa), kwalifkator uniform określa, że zmienna jest przekazywana do szadera z kodu JavaScript
+
+"uniform float przesun;",			// te komendę dodałem do tego przykłądu, zmienna ma przesuwać obiekt
+
+"varying float przesunPrzekaz;",
+
+"varying vec2 fragColor;",				//deklaracja zmiennej o nazwie fragColor, parametr varying oznacza, że ta zmienna może być przekazywana do szadera fragmentów, więc identyczną deklarację, z identyczną nazwą zmiennej umieści się w szaderze fragmentów, wtedy chyba ta zmienna będzie "wspólna dla obu szaderów", oba szadery będą mogły coś w niej zmieniać, jednocześnie z n iej kozystać
+
+"",
+
+"void main()",				//czyli funkcja domyślna funkcja main, która odpala się podczas startu shadera
+
+"{",
+"	fragColor = vertColor;",
+"",
+"	przesunPrzekaz = przesun;",
+//"	przesunPrzekaz = 0.5;",
+"",
+"	gl_Position = vec4(vertPosition, 0.0, 1.0);",		//ciało funkcji main, które zawiera, zdaje się, przypisanie dwuwymiarowej współrzędnej ze zmiennej vertPosition do zmiennej? (nie wiem jeszcze czemu to nie jest deklarowane tylko odrazu przypisywane) gl_Position, która jest danymi współrzędnych 4-ro wymiarowymi (co oznacza vec4, chociaż typ vec4 nie musi być koniecznie danymi współrzędnych, bo może też zawierać np. dane koloru RGBA), czyli te współrzędne będą potem mnożone przez macierze pozycji i perspektywy
+"}"
+].join("\n");
+
+
+
+
+
+var fragmentShaderText =			//shader fragmentów, czyli zdaje się, ze to coś jest odpowiedzialne za kolorowanie pikseli na ekranie, tutaj wszystko co będzie rysowane (każdy piksel) zostanie pokolorowany
+[
+
+"precision mediump float;",
+"",
+"varying float przesunPrzekaz;",
+"varying vec2 fragColor;",	
+"uniform sampler2D samplerTekstury;",	
+"void main()",
+"{",
+//"	gl_FragColor = vec4(fragColor, 1.0 - przesunPrzekaz);",
+"	gl_FragColor = texture2D(samplerTekstury, fragColor);",
+"}"
+
+].join("\n");
+
+
+	
+	var canvas = document.getElementById("mycanvas");
+	var gl = canvas.getContext("webgl");				//kontekst webgl
+	gl.clearColor(0.75,0.85,0.8,1.0);						//ustawienie koloru tła
+	gl.clear(gl.COLOR_BUFFER_BIT);					//użycie koloru tła, zamalowanie nim obrazu
+	
+	
+	var vertexShader = gl.createShader(gl.VERTEX_SHADER);					//deklaracja zmiennej która będzie shaderem vertexów (narazie zmienna jest pusta)
+	var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);			//deklaracja zmiennej która będzie shaderem fragmentów (narazie zmienna jest pusta)
+	
+	
+	gl.shaderSource(vertexShader, vertexShaderText);					//przypisanie do zmiennej vertexShader tekstu kodu glsl z tablicy znaków vertexShaderText
+	gl.shaderSource(fragmentShader, fragmentShaderText);			//przypisanie do zmiennej fragmentShader tekstu kodu glsl z tablicy znaków fragmentShaderText
+	
+	gl.compileShader(vertexShader);				//ta komenda kompiluje kod glsl do... no poprostu kompiluje ten kod
+	if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)){
+		console.error("coś nie tak z szaderem vertexów", gl.getShaderInfoLog(vertexShader));
+	}		//instrukcja wyświetli w konsoli ewentualny błąd kompilacji kodu shadera
+	
+	gl.compileShader(fragmentShader);			//ta komenda kompiluje kod glsl do... no poprostu kompiluje ten kod
+	if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)){
+		console.error("coś nie tak z szaderem fragmentów", gl.getShaderInfoLog(fragmentShader));
+	}		//instrukcja wyświetli w konsoli ewentualny błąd kompilacji kodu shadera
+	
+	
+	
+	var program = gl.createProgram();			//deklaracja programu, czyli czgoś co połączy cały skompilowany kod glsl w całość i odpali wszystkie instrukcje (na razie zmienna jest pusta)
+	gl.attachShader(program, vertexShader);		//przypisanie do programu skompilowanego shadera vertexów
+	gl.attachShader(program, fragmentShader);		//przypisanie do programu skompilowanego shadera fragmentów
+	gl.linkProgram(program);			//połączenie/złączenie/zlinkowanie przypisanych do programu shaderów/kodów/skompilowanych kodów
+	if (!gl.getProgramParameter(program, gl.LINK_STATUS)){
+		console.error("coś nie tak z linkowaniem shaderów w programie", gl.getProgramInfoLog(program));
+	}			//instrukcja wyświetli w konsoli ewentualny błąd linkowania shaderó w programie
+	gl.validateProgram(program);			//walidacja programu, czyli sprawdzenie jego poprawności (cholera wie po co to, i czy to konieczne, skoro przypisane do programu szadery były wcześniej kompilowane, ale ten krok jest w tutorialu)
+	if (!gl.getProgramParameter(program, gl.VALIDATE_STATUS)){
+		console.error("coś nie tak z walidacją programu", gl.getProgramInfoLog(program));
+	}		//instrukcja wyświetli ewentualny błąd walidacji
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	var kolor1 = 0.2;
+
+	
+	//kombinowanie ze wspołrzędnymi tekstury
+	var triangleVertices = 			//współrzędne wierzchołków (X i Y) i kolory piksela w tych wierzchołkach
+	[	//	X, Y				R, G, B
+			0.0, 0.3,				0.5,1,
+			-0.8, -0.95,			0,0,
+			0.5, -0.5,			1,0,
+			
+			0.0, 0.5,				0.5,1,
+			0.5, 0.5,				1,1,
+			0.5, -0.5,			1,0,
+			
+			0.0, 0.3,				0.5,1,
+			-0.8, 0.8,			0,1,
+			-0.8, -0.95,			0,0
+
+	];
+	
+	
+	
+	
+	
+	
+	
+	var triangleVertexBufferObject = gl.createBuffer();		//deklaracja zmiennej która będzie buforem danych (na razie zmienna jest pusta)
+	gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexBufferObject);		//aktywacja wczesniej zadeklarowanego bufora triangleVertexBufferObject i chyba określenie, że będzie on tablicą danych? gl.ARRAY_BUFFER
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.STATIC_DRAW);		//przypisanie/wrzucenie do bufora danych wierzchołków z tablicy triangleVertices oraz określenie, że te dane/ te współrzędne wierzchołków, że każdy wierzchołek bedzie przechowywany z 32 bitową precyzją, pozatym w trzecim parametrze określamy, że te współrzędne będą statyczne, czyli nie zmieniane w trakcie działania programu
+	
+	
+	var positionAttribLocation = gl.getAttribLocation(program, "vertPosition");		//deklaracja zmiennej, która przechowuje chyba odwołanie do odpowiedniej zmiennej vertPosition w programie shadera vertexów, która przechowuje pozycje/współrzędne wierzchołka
+	
+	var colorAttribLocation = gl.getAttribLocation(program, "vertColor");			//deklaracja zmiennej, która przechowuje chyba odwołanie do odpowiedniej zmiennej vertColor w programie shadera vertexów, która przechowuje kolor wierzchołka
+	
+	gl.vertexAttribPointer(		//określenie atrybutów jakie bedą miały współrzędne wierzchołków
+		
+		positionAttribLocation,		//zmienna która będzie przechowywała współrzędne
+		2,										//liczba określa ile współrzędnych bedzie wykorzystywane/przechowywane, tutaj będa dwa wymiary (X i Y), czyli dwie wartości
+		gl.FLOAT,							//podanie jakiego typu bedą współrzędne, tutaj zmiennoprzecinkowe, czyli float
+		gl.FALSE,							//nie wiem, koleś w tutorialu nie powiedział (z innego tutoriala dowiedziałem się, że tą zmienną można normalizować przesłane dane, tzn przerabiać je jakoś, false tutaj oznacza, żeby zostawić dane w spokoju czyli nie przerabiać ich, nie normalizować)
+		4 * Float32Array.BYTES_PER_ELEMENT,				//podanie ile bitów będzie wykorzystywane dla każdej podane wartości, ponieważ każda wartość osobno(zarówno X czy Y, oraz dane kolorów RGB) będzie podawana z 32 bitową precyzją, a jeden bajt to 8 bitów, więc na każdą wartość będzie przypadały 4 bajty pamięci, a ponieważ będą podawane pięc wartości współrzędnych (X i Y) i kolory (R, G i B), to wykorzystane będzie 5 * 4 bajty czyli 8 bajtów na każdą współrzędną wierzchołka
+		0				//przesunięcie vertexa od początku, przeskoczy o tyle wartości
+		
+	);
+	
+	
+	gl.vertexAttribPointer(		//określenie atrybutów jakie bedą miały kolory wierzchołków
+		
+		colorAttribLocation,		//zmienna która będzie przechowywała współrzędne
+		2,										//liczba określa ile współrzędnych bedzie wykorzystywane/przechowywane, tutaj będa dwa wymiary (X i Y), czyli dwie wartości
+		gl.FLOAT,							//podanie jakiego typu bedą współrzędne, tutaj zmiennoprzecinkowe, czyli float
+		gl.FALSE,							//nie wiem, koleś w tutorialu nie powiedział
+		4 * Float32Array.BYTES_PER_ELEMENT,				
+		2 * Float32Array.BYTES_PER_ELEMENT				//przesunięcie vertexa od początku, przeskoczy o tyle wartości
+		
+	);
+	
+	
+	
+	gl.enableVertexAttribArray(positionAttribLocation);		//chyba aktywacja tej zmiennej/tego odwołania do zmiennej w shaderze vertexów, która przechowuje pozycje/współrzędne wierzchołka
+	gl.enableVertexAttribArray(colorAttribLocation);			//chyba aktywacja tej zmiennej/tego odwołania do zmiennej w shaderze vertexów, która przechowuje kolory wierzchołka
+	
+	
+	
+	
+	gl.useProgram(program);		//uruchamia program, który chyba oblicza wszystkie wierzchołki/wszystkie współrzędne (uruchamia wszystkie szadery)
+	//gl.drawArrays(gl.TRIANGLES, 0, 9);				//rysuje tablicę, chyba pierwszy parametr określa uzywane prymitywy, podobno w 99% będą tu trójkąty, żadko uzywa sie innych prymitywów, drugi parametr określa coś co koleś w tutorialu nazwał "ile parametrów będzie pominiętych", nie wiem jak to rozumieć, ale wpisł tu zero, że niby żaden nie będzie pominięty (skip), trzeci parametr określa ile będzie współrzędnych, my w tablicy określiliśmy trzy wierzchołki trójkąta (wspołrzędne i kolor), więc wpisał tu trzy (potem stworzyłem na tym pliku prostokąt składający się z trzech trójkątów, czyli 9 wierzchołków, czyli wpisałem tu 9)
+	
+	
+	
+	
+	
+	//odniesienie do jednej konkretnej zmiennej w szaderze (chyba program musi być uruchomiony kiedy chcę aby ponizszy kod miał zadziałać, czyli poniższy kod musi być po komendzie gl.useProgram(program), przynajmniej jak był przed nią to wywalało błąd, a jak jest po niej to jest OK)
+	var przesunJS = gl.getUniformLocation(program, "przesun");	//deklaracja odwołania do zmiennej przesun w szaderze vertexów
+	var wartoscPrzesunJS = 0.2;
+	gl.uniform1f(przesunJS, wartoscPrzesunJS);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	//*******************************************************
+	//***********************************
+	//zabawa w tekstury
+	
+	
+
+	
+	  //marioTekstura = gl.createTexture();
+	  var marioObraz = new Image();
+	  marioObraz.src = 'mario.jpg';
+	  marioObraz.onload = function() { ladujObrazekDoTekstury(); };
+
+	  
+	  
+	function ladujObrazekDoTekstury() {
+		/*//gl.bindTexture(gl.TEXTURE_2D, null);
+		gl.bindTexture(gl.TEXTURE_2D, marioTekstura);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, marioObraz);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+	  //gl.generateMipmap(gl.TEXTURE_2D);
+	  */
+	  
+		//gl.useProgram(program);
+	  
+		var marioTekstura = gl.createTexture(); 
+		//gl.GenTextures(1,indeksTekstur);
+		
+		gl.bindTexture(gl.TEXTURE_2D, marioTekstura);		//aktywacja tekstury w webgl, tylko nie wiem jeszcze do czego w webgl ona trafia, w sensie do czego trafi aktywacja innej tekstury)
+		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);		//to coś odwraca współrzędne tekstury tak, aby punkt (0,0) był w lewym dolnym rogu bo domyślnie jest w lewym górnym przez co tektura jest do góry nogami
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, marioObraz);		//drugi parametr (tutaj 0) wskazuje kolejną mipmapę (numerowane są od 0, mipmapy to kolejne, coraz mniejsze wersje tej tekstury, czyli co raz gorsza rozdzielczosc, coraz gorsza jakość, z tego właśnie powodu tekstury muszą być wielokrotnością liczby 2, żeby mozna je było łatwo na mipmapy dzielić)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);	//te dwie linijki informują, co ma się robić z teksturą kiedy jest większa, bądź mniejsza od natywnej rozdzielczości na ekranie, czy np ma się rozmywać obraz, czy może mają być widoczne piksele itd... tutaj jest LINEAR czyli ma się rozmyć obraz
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		
+		//gl.generateMipmap(gl.TEXTURE_2D);
+		//gl.hint(gl.GENERATE_MIPMAP_HINT. gl.NICEST);
+	  
+	  
+		
+		//var samplerUniform = gl.getUniformLocation(program, "samplerTekstury");
+		
+		//gl.bindTexture(gl.TEXTURE_2D, marioTekstura);
+		//gl.activeTexture(gl.TEXTURE0);
+		
+		//gl.uniform1i(samplerUniform, 1);
+		
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		gl.drawArrays(gl.TRIANGLES, 0, 9);
+		
+		
+	  }
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	function animacja(czas){
+		
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		gl.drawArrays(gl.TRIANGLES, 0, 9);
+		
+
+
+		liczbaKlatekNaSekunde.oblicz(czas);
+		pomoc();
+		
+		requestAnimationFrame(arguments.callee);
+	
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	var liczbaKlatekNaSekunde = {
+	
+		poprzedniCzas: 1,
+		roznicaCzasu: 1,
+		wynik: 1,
+		
+		oblicz: function(czasArg){
+		
+			this.roznicaCzasu = czasArg - this.poprzedniCzas;
+			this.poprzedniCzas = czasArg;
+			this.wynik = Math.round(1000/this.roznicaCzasu);
+		
+		},
+	
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+		//-----------------------------------------------------------------------------------------------
+		//-------------------------------------------------------------------------------------
+		//--------    OBSŁUGA PRZYCISKÓW NA KLAWIATURZE  -----------------
+		//----------------------------------------------------------------
+		//------------------------------------------------
+
+
+		var goraBtn = false;
+		var prawoBtn = false;
+		var dolBtn = false;
+		var lewoBtn = false;
+		var enterBtn = false;
+
+
+		function klawDown(e){
+			
+			var p = e.keyCode;
+			
+				if (p==87 || p==73 || p==38) {goraBtn=true;}		//góra W I
+				if (p==68 || p==76 || p==39) {prawoBtn=true;}		//prawo D L
+				if (p==83 || p==75 || p==40) {dolBtn=true;}			//dół S K
+				if (p==65 || p==74 || p==37) {lewoBtn=true;}		//lewo A J
+				if (p==13) {enterBtn=true;}									//enter
+
+		}
+
+		function klawUp(e){
+			
+			var p = e.keyCode;
+			
+				if (p==87 || p==73 || p==38) {goraBtn=false;}		//góra W I
+				if (p==68 || p==76 || p==39) {prawoBtn=false;}		//prawo D L
+				if (p==83 || p==75 || p==40) {dolBtn=false;}		//dół S K
+				if (p==65 || p==74 || p==37) {lewoBtn=false;}		//lewo A J
+				if (p==13) {enterBtn=false;}									//enter
+				
+		}
+
+
+		document.addEventListener('keydown', klawDown);
+		document.addEventListener('keyup', klawUp);
+	
+	
+	
+		
+		
+		
+		
+		
+		
+		//odpala funkcję
+		
+		//animacja();
+		
+		
+
+</script>
+
+</body>
+
+</html>
